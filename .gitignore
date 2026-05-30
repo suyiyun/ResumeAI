@@ -1,0 +1,14 @@
+# Environment
+backend/.env
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/test_output.html
+
+# OS
+.DS_Store
+
+# Large files
+*.docx
+*.jpg
+*.png

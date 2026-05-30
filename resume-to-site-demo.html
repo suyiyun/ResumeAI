@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResumeAI — 上传简历，生成个人网站</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a28;
+    --border: #2a2a3d;
+    --accent: #7c6aff;
+    --accent2: #a78bfa;
+    --text: #e8e8f0;
+    --muted: #6b7280;
+    --success: #10b981;
+    --radius: 14px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 40px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .logo { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  .nav-badge {
+    font-size: 11px; background: var(--accent);
+    color: #fff; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+  }
+
+  /* HERO */
+  .hero {
+    text-align: center;
+    padding: 70px 20px 50px;
+  }
+  .hero-tag {
+    display: inline-block;
+    font-size: 12px; font-weight: 600; letter-spacing: 1px;
+    color: var(--accent2); background: rgba(124,106,255,0.12);
+    border: 1px solid rgba(124,106,255,0.3);
+    padding: 5px 14px; border-radius: 20px; margin-bottom: 22px;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: clamp(32px, 5vw, 58px);
+    font-weight: 800; line-height: 1.1;
+    letter-spacing: -1.5px; margin-bottom: 18px;
+  }
+  h1 em { font-style: normal; color: var(--accent2); }
+  .hero-sub {
+    color: var(--muted); font-size: 17px; max-width: 480px;
+    margin: 0 auto 40px;
+  }
+
+  /* STEP INDICATOR */
+  .steps {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; margin-bottom: 48px;
+  }
+  .step {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; font-weight: 500; color: var(--muted);
+    padding: 8px 16px;
+    transition: color 0.3s;
+  }
+  .step.active { color: var(--text); }
+  .step.done { color: var(--success); }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    transition: all 0.3s;
+  }
+  .step.active .step-num { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step.done .step-num { background: var(--success); border-color: var(--success); color: #fff; }
+  .step-line { width: 40px; height: 1px; background: var(--border); }
+
+  /* MAIN CARD */
+  .main { max-width: 860px; margin: 0 auto; padding: 0 20px 80px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  /* STEP 1: UPLOAD */
+  #step1 { display: block; }
+  #step2 { display: none; }
+  #step3 { display: none; }
+
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 48px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 28px;
+    background: var(--surface2);
+    position: relative;
+  }
+  .upload-area:hover, .upload-area.dragover {
+    border-color: var(--accent);
+    background: rgba(124,106,255,0.06);
+  }
+  .upload-icon { font-size: 40px; margin-bottom: 14px; }
+  .upload-area h3 { font-size: 16px; margin-bottom: 6px; }
+  .upload-area p { color: var(--muted); font-size: 13px; }
+  .upload-area input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .or-divider {
+    display: flex; align-items: center; gap: 16px;
+    margin: 0 28px; color: var(--muted); font-size: 13px;
+  }
+  .or-divider::before, .or-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .paste-area {
+    margin: 16px 28px 28px;
+  }
+  .paste-area textarea {
+    width: 100%; min-height: 160px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-size: 14px; padding: 16px;
+    resize: vertical; outline: none;
+    font-family: inherit; line-height: 1.6;
+    transition: border-color 0.2s;
+  }
+  .paste-area textarea:focus { border-color: var(--accent); }
+  .paste-area textarea::placeholder { color: var(--muted); }
+
+  /* STYLE PICKER */
+  .style-section {
+    padding: 0 28px 28px;
+  }
+  .style-section label {
+    font-size: 13px; color: var(--muted); display: block; margin-bottom: 12px; font-weight: 500;
+  }
+  .style-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .style-option {
+    border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 14px 12px;
+    cursor: pointer; text-align: center;
+    transition: all 0.2s; background: var(--surface2);
+  }
+  .style-option:hover { border-color: var(--accent2); }
+  .style-option.selected { border-color: var(--accent); background: rgba(124,106,255,0.1); }
+  .style-option .style-icon { font-size: 22px; margin-bottom: 6px; }
+  .style-option .style-name { font-size: 12px; font-weight: 600; }
+  .style-option .style-desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* BUTTONS */
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 10px;
+    padding: 13px 28px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    width: calc(100% - 56px); margin: 0 28px 28px;
+    justify-content: center;
+  }
+  .btn-primary:hover { background: #6c5aef; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: transparent; color: var(--text);
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 11px 22px; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .btn-success {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--success); color: #fff;
+    border: none; border-radius: 10px;
+    padding: 13px 28px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-success:hover { background: #059669; transform: translateY(-1px); }
+
+  /* STEP 2: GENERATING */
+  .generating-view { padding: 60px 28px; text-align: center; }
+  .gen-spinner {
+    width: 64px; height: 64px; margin: 0 auto 28px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .gen-title { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+  .gen-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+  .gen-log {
+    background: var(--surface2); border-radius: 10px;
+    padding: 16px 20px; text-align: left; font-size: 13px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    border: 1px solid var(--border); max-width: 500px; margin: 0 auto;
+    min-height: 120px;
+  }
+  .log-line {
+    color: var(--muted); margin-bottom: 6px; opacity: 0;
+    animation: fadein 0.4s ease forwards;
+  }
+  .log-line.ok { color: #34d399; }
+  .log-line.working { color: var(--accent2); }
+  .log-line.error { color: #f87171; }
+  @keyframes fadein { to { opacity: 1; } }
+
+  /* STEP 3: PREVIEW */
+  .preview-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .preview-header h3 { font-size: 15px; font-weight: 600; }
+  .preview-url {
+    font-size: 12px; color: var(--muted);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 12px; font-family: monospace;
+  }
+  .preview-frame {
+    width: 100%; height: 500px; background: #fff;
+    border: none; display: block;
+  }
+  .preview-actions {
+    display: flex; gap: 12px; padding: 20px 24px;
+    border-top: 1px solid var(--border);
+    align-items: center; background: var(--surface2);
+  }
+  .preview-actions .spacer { flex: 1; }
+
+  /* Extras section */
+  .extras-section { margin: 0 28px 4px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .extras-toggle {
+    width: 100%; background: var(--surface2); border: none; color: var(--muted);
+    padding: 11px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: color 0.2s;
+  }
+  .extras-toggle:hover { color: var(--text); }
+  #extrasArrow { font-size: 18px; transition: transform 0.2s; line-height: 1; }
+  #extrasArrow.open { transform: rotate(90deg); }
+  .extras-body { display: none; padding: 16px; border-top: 1px solid var(--border); background: var(--surface); }
+  .extras-body.open { display: block; }
+  .extras-item { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .extras-item:last-child { margin-bottom: 0; }
+  .extras-label { font-size: 12px; color: var(--muted); font-weight: 500; width: 80px; flex-shrink: 0; }
+  .extras-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 13px;
+    padding: 8px 12px; outline: none; transition: border-color 0.2s;
+  }
+  .extras-input:focus { border-color: var(--accent); }
+  .extras-input::placeholder { color: var(--muted); }
+  .extras-upload-row { display: flex; align-items: center; gap: 14px; flex: 1; }
+  .photo-preview {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--surface2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0; overflow: hidden;
+  }
+  .upload-btn-small {
+    display: inline-block; font-size: 12px; font-weight: 500;
+    color: var(--accent2); border: 1px solid rgba(124,106,255,0.3);
+    border-radius: 6px; padding: 5px 12px; cursor: pointer;
+    background: rgba(124,106,255,0.08); transition: background 0.2s;
+  }
+  .upload-btn-small:hover { background: rgba(124,106,255,0.16); }
+
+  /* Slug input row */
+  .slug-row {
+    display: flex; align-items: center;
+    padding: 12px 20px; border-top: 1px solid var(--border);
+    background: var(--surface2); gap: 0;
+  }
+  .slug-prefix {
+    font-size: 13px; color: var(--muted); font-family: monospace;
+    background: var(--surface); border: 1px solid var(--border);
+    border-right: none; border-radius: 8px 0 0 8px;
+    padding: 8px 12px; white-space: nowrap;
+  }
+  .slug-row input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 0 8px 8px 0; color: var(--text);
+    font-size: 13px; font-family: monospace;
+    padding: 8px 12px; outline: none; max-width: 200px;
+    transition: border-color 0.2s;
+  }
+  .slug-row input:focus { border-color: var(--accent); }
+  .slug-row input::placeholder { color: var(--muted); }
+
+  /* Published state */
+  .published-banner {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex; align-items: center; gap: 12px;
+    margin: 16px 24px;
+  }
+  .published-banner .pub-icon { font-size: 24px; }
+  .published-banner h4 { font-size: 14px; font-weight: 600; color: #34d399; margin-bottom: 4px; }
+  .published-banner p { font-size: 12px; color: var(--muted); }
+  .pub-link { color: var(--accent2); text-decoration: none; font-weight: 500; }
+  .pub-link:hover { text-decoration: underline; }
+
+  /* Uploaded filename badge */
+  .file-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(124,106,255,0.12); border: 1px solid rgba(124,106,255,0.3);
+    border-radius: 8px; padding: 6px 14px; font-size: 13px;
+    margin: 16px 28px 0; color: var(--accent2);
+  }
+
+
+  /* Section header in card */
+  .card-header {
+    padding: 20px 28px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card-header h2 { font-size: 16px; font-weight: 600; }
+  .card-header .step-badge {
+    font-size: 11px; background: var(--accent); color: #fff;
+    padding: 2px 8px; border-radius: 4px; font-weight: 700;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 20px;
+    font-size: 14px; font-weight: 500;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 999; display: flex; align-items: center; gap: 10px;
+    max-width: 320px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(16,185,129,0.4); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Resume<span>AI</span></div>
+  <div class="nav-badge">Beta</div>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">✨ AI Powered</div>
+  <h1>上传简历<br><em>秒生成个人网站</em></h1>
+  <p class="hero-sub">AI 解析你的简历，自动生成专属个人主页，一键发布上线</p>
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step active" id="stepind1">
+      <div class="step-num">1</div>
+      上传简历
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="stepind2">
+      <div class="step-num">2</div>
+      AI 生成
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="stepind3">
+      <div class="step-num">3</div>
+      预览发布
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ========== STEP 1 ========== -->
+  <div class="card" id="step1">
+    <div class="card-header">
+      <span class="step-badge">步骤 1</span>
+      <h2>上传你的简历</h2>
+    </div>
+
+    <input type="hidden" id="backendUrl" value="http://localhost:8000">
+
+    <!-- Upload -->
+    <div class="upload-area" id="uploadArea">
+      <input type="file" accept=".pdf,.doc,.docx,.txt" id="fileInput">
+      <div class="upload-icon">📄</div>
+      <h3>点击或拖拽上传简历</h3>
+      <p>支持 PDF、Word、TXT 格式</p>
+    </div>
+
+    <div id="fileBadge" style="display:none">
+      <div class="file-badge">
+        📎 <span id="fileName"></span>
+        <span id="parseStatus" style="margin-left:8px;font-size:11px;opacity:0.7"></span>
+      </div>
+    </div>
+
+    <!-- hidden, populated by /upload-resume -->
+    <textarea id="resumeText" style="display:none"></textarea>
+
+    <!-- Optional extras -->
+    <div class="extras-section">
+      <button class="extras-toggle" onclick="toggleExtras()" id="extrasToggleBtn">
+        <span>✦ 添加可选信息</span>
+        <span id="extrasArrow">›</span>
+      </button>
+      <div class="extras-body" id="extrasBody">
+
+        <!-- Profile photo -->
+        <div class="extras-item">
+          <div class="extras-label">头像</div>
+          <div class="extras-upload-row">
+            <div class="photo-preview" id="photoPreview">
+              <span id="photoIcon">👤</span>
+              <img id="photoImg" style="display:none; width:100%; height:100%; object-fit:cover; border-radius:50%;">
+            </div>
+            <div>
+              <label class="upload-btn-small">
+                上传图片
+                <input type="file" accept="image/*" id="photoInput" style="display:none" onchange="handlePhoto(this)">
+              </label>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">JPG / PNG，建议正方形</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Links -->
+        <div class="extras-item">
+          <div class="extras-label">LinkedIn</div>
+          <input type="url" id="linkedinUrl" class="extras-input" placeholder="https://linkedin.com/in/your-name">
+        </div>
+        <div class="extras-item">
+          <div class="extras-label">Google Scholar</div>
+          <input type="url" id="scholarUrl" class="extras-input" placeholder="https://scholar.google.com/citations?user=...">
+        </div>
+        <div class="extras-item">
+          <div class="extras-label">个人网址</div>
+          <input type="url" id="websiteUrl" class="extras-input" placeholder="https://yourwebsite.com">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Style picker -->
+    <div class="style-section">
+      <label>🎨 选择网站风格</label>
+      <div class="style-grid">
+        <div class="style-option selected" onclick="selectStyle(this, 'minimal')">
+          <div class="style-icon">🖤</div>
+          <div class="style-name">极简</div>
+          <div class="style-desc">简洁黑白，专业感强</div>
+        </div>
+        <div class="style-option" onclick="selectStyle(this, 'creative')">
+          <div class="style-icon">🎨</div>
+          <div class="style-name">创意</div>
+          <div class="style-desc">彩色渐变，个性十足</div>
+        </div>
+        <div class="style-option" onclick="selectStyle(this, 'tech')">
+          <div class="style-icon">💻</div>
+          <div class="style-name">科技</div>
+          <div class="style-desc">暗黑风格，极客气质</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="generateBtn" onclick="startGenerate()">
+      ✨ 生成我的个人网站
+    </button>
+  </div>
+
+  <!-- ========== STEP 2: GENERATING ========== -->
+  <div class="card" id="step2">
+    <div class="generating-view">
+      <div class="gen-spinner"></div>
+      <div class="gen-title">AI 正在生成你的网站...</div>
+      <div class="gen-sub">通常需要 10-20 秒，请稍候</div>
+      <div class="gen-log" id="genLog"></div>
+    </div>
+  </div>
+
+  <!-- ========== STEP 3: PREVIEW ========== -->
+  <div class="card" id="step3">
+    <div class="preview-header">
+      <h3>🌐 网站预览</h3>
+      <div class="preview-url" id="previewUrl">resumeai.app/preview/xxx</div>
+    </div>
+    <iframe class="preview-frame" id="previewFrame" srcdoc=""></iframe>
+    <div id="publishedBanner" style="display:none">
+      <div class="published-banner">
+        <div class="pub-icon">🎉</div>
+        <div style="flex:1; min-width:0;">
+          <h4>已成功发布！</h4>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap;">
+            <a class="pub-link" id="publishedLink" href="#" target="_blank" style="word-break:break-all; font-size:12px;"></a>
+            <button onclick="copyLink()" style="font-size:11px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:#34d399; border-radius:5px; padding:3px 10px; cursor:pointer; white-space:nowrap;">复制链接</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slug-row">
+      <span class="slug-prefix">resumeai.app/u/</span>
+      <input type="text" id="slugInput" placeholder="your-name" maxlength="40"
+        oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'-').replace(/-+/g,'-')">
+    </div>
+    <div class="preview-actions">
+      <button class="btn-secondary" onclick="goBack()">← 重新编辑</button>
+      <button class="btn-secondary" onclick="regenerate()">🔄 换个风格</button>
+      <button class="btn-secondary" onclick="downloadHTML()">⬇️ 下载 HTML</button>
+      <button class="btn-secondary" onclick="openPreview()">↗ 全屏预览</button>
+      <div class="spacer"></div>
+      <button class="btn-success" id="publishBtn" onclick="publish()">🚀 发布上线</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✅</span>
+  <span id="toastMsg"></span>
+</div>
+
+<!-- ====== GENERATED SITE TEMPLATES ====== -->
+<script>
+const templates = {
+  minimal: (data) => `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${data.name} — Portfolio</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Georgia', serif; background:#fafafa; color:#1a1a1a; }
+  .hero { padding: 80px 60px; max-width: 760px; margin: 0 auto; }
+  .name { font-size: 52px; font-weight: 400; letter-spacing:-2px; margin-bottom: 12px; }
+  .title { font-size: 16px; color: #666; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 32px; }
+  .contact { display: flex; gap: 20px; font-size: 13px; color: #999; margin-bottom: 64px; }
+  .contact a { color: #1a1a1a; text-decoration: none; border-bottom: 1px solid #ddd; }
+  section { margin-bottom: 52px; }
+  h2 { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #999; margin-bottom: 24px; border-bottom: 1px solid #eee; padding-bottom: 12px; }
+  .exp-item { margin-bottom: 28px; }
+  .exp-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .exp-company { font-size: 13px; color: #999; margin-bottom: 10px; }
+  .exp-desc { font-size: 14px; line-height: 1.7; color: #444; }
+  .skills { display: flex; flex-wrap: wrap; gap: 10px; }
+  .skill { font-size: 13px; padding: 6px 14px; border: 1px solid #ddd; border-radius: 20px; color: #444; }
+  hr { border: none; border-top: 1px solid #eee; margin: 60px 0; }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="name">${data.name}</div>
+  <div class="title">${data.title}</div>
+  <div class="contact">
+    <a href="mailto:${data.email}">${data.email}</a>
+    <span>${data.location}</span>
+  </div>
+  <section>
+    <h2>关于我</h2>
+    <p class="exp-desc">${data.summary}</p>
+  </section>
+  <hr>
+  <section>
+    <h2>工作经历</h2>
+    ${data.experience.map(e => `
+    <div class="exp-item">
+      <div class="exp-title">${e.role}</div>
+      <div class="exp-company">${e.company} · ${e.period}</div>
+      <div class="exp-desc">${e.desc}</div>
+    </div>`).join('')}
+  </section>
+  <section>
+    <h2>技能</h2>
+    <div class="skills">${data.skills.map(s => `<span class="skill">${s}</span>`).join('')}</div>
+  </section>
+</div>
+</body></html>`,
+
+  creative: (data) => `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${data.name}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, sans-serif; background: #fff; }
+  .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 80px 60px; text-align: center; }
+  .avatar { width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 20px; border: 3px solid rgba(255,255,255,0.5); }
+  .name { font-size: 42px; font-weight: 800; margin-bottom: 8px; letter-spacing:-1px; }
+  .title { font-size: 16px; opacity: 0.85; margin-bottom: 24px; }
+  .contact-pills { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .pill { background: rgba(255,255,255,0.2); border-radius: 20px; padding: 6px 16px; font-size: 13px; border: 1px solid rgba(255,255,255,0.3); }
+  .content { max-width: 760px; margin: 0 auto; padding: 60px 40px; }
+  .section-title { font-size: 22px; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 2px; background: linear-gradient(to right, #667eea, transparent); border-radius: 1px; }
+  .card { background: #f8f9ff; border-radius: 14px; padding: 22px 24px; margin-bottom: 14px; border-left: 4px solid #667eea; }
+  .exp-role { font-size: 16px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+  .exp-meta { font-size: 13px; color: #888; margin-bottom: 10px; }
+  .exp-desc { font-size: 14px; color: #444; line-height: 1.6; }
+  .skills { display: flex; flex-wrap: wrap; gap: 10px; }
+  .skill-tag { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+  section { margin-bottom: 48px; }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="avatar">👤</div>
+  <div class="name">${data.name}</div>
+  <div class="title">${data.title}</div>
+  <div class="contact-pills">
+    <span class="pill">✉️ ${data.email}</span>
+    <span class="pill">📍 ${data.location}</span>
+  </div>
+</div>
+<div class="content">
+  <section>
+    <div class="section-title">关于我</div>
+    <p style="color:#444;line-height:1.8;font-size:15px">${data.summary}</p>
+  </section>
+  <section>
+    <div class="section-title">工作经历</div>
+    ${data.experience.map(e => `
+    <div class="card">
+      <div class="exp-role">${e.role}</div>
+      <div class="exp-meta">${e.company} · ${e.period}</div>
+      <div class="exp-desc">${e.desc}</div>
+    </div>`).join('')}
+  </section>
+  <section>
+    <div class="section-title">技能</div>
+    <div class="skills">${data.skills.map(s => `<span class="skill-tag">${s}</span>`).join('')}</div>
+  </section>
+</div>
+</body></html>`,
+
+  tech: (data) => `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${data.name}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #e6edf3; }
+  .terminal-bar { background: #161b22; padding: 12px 20px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid #30363d; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .terminal-title { font-size: 12px; color: #8b949e; margin: 0 auto; }
+  .hero { padding: 50px 60px; border-bottom: 1px solid #21262d; }
+  .prompt { color: #3fb950; font-size: 12px; margin-bottom: 8px; }
+  .name { font-size: 44px; font-weight: 700; letter-spacing: -1px; color: #e6edf3; margin-bottom: 8px; }
+  .name .cursor { display: inline-block; width: 3px; height: 44px; background: #58a6ff; vertical-align: bottom; animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .title-line { color: #58a6ff; font-size: 15px; margin-bottom: 20px; }
+  .meta { display: flex; gap: 24px; font-size: 13px; color: #8b949e; }
+  .meta span { display: flex; align-items: center; gap: 6px; }
+  .content { max-width: 800px; padding: 40px 60px; }
+  .section { margin-bottom: 44px; }
+  .sec-header { color: #3fb950; font-size: 12px; letter-spacing: 1px; margin-bottom: 18px; }
+  .sec-header::before { content: '# '; color: #6e7681; }
+  .exp-block { border-left: 2px solid #21262d; padding-left: 20px; margin-bottom: 24px; }
+  .exp-role { color: #79c0ff; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .exp-meta { color: #6e7681; font-size: 12px; margin-bottom: 10px; }
+  .exp-meta span { color: #3fb950; }
+  .exp-desc { color: #8b949e; font-size: 13px; line-height: 1.8; font-family: -apple-system, sans-serif; }
+  .skills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sk { background: #161b22; border: 1px solid #30363d; color: #79c0ff; padding: 5px 12px; border-radius: 6px; font-size: 12px; }
+  .about-text { color: #8b949e; font-size: 14px; line-height: 1.8; font-family: -apple-system, sans-serif; }
+</style>
+</head>
+<body>
+<div class="terminal-bar">
+  <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+  <div class="terminal-title">${data.name.toLowerCase().replace(/\s/g,'')}.sh — portfolio</div>
+</div>
+<div class="hero">
+  <div class="prompt">~/portfolio $</div>
+  <div class="name">${data.name}<span class="cursor"></span></div>
+  <div class="title-line">// ${data.title}</div>
+  <div class="meta">
+    <span>📧 ${data.email}</span>
+    <span>📍 ${data.location}</span>
+  </div>
+</div>
+<div class="content">
+  <div class="section">
+    <div class="sec-header">ABOUT</div>
+    <p class="about-text">${data.summary}</p>
+  </div>
+  <div class="section">
+    <div class="sec-header">EXPERIENCE</div>
+    ${data.experience.map(e => `
+    <div class="exp-block">
+      <div class="exp-role">${e.role}</div>
+      <div class="exp-meta">${e.company} · <span>${e.period}</span></div>
+      <div class="exp-desc">${e.desc}</div>
+    </div>`).join('')}
+  </div>
+  <div class="section">
+    <div class="sec-header">SKILLS</div>
+    <div class="skills">${data.skills.map(s => `<span class="sk">${s}</span>`).join('')}</div>
+  </div>
+</div>
+</body></html>`
+};
+
+// ====== STATE ======
+let selectedStyle = 'minimal';
+let generatedHTML = '';
+let isPublished = false;
+
+// ====== HELPERS ======
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById(`step${i}`).style.display = i === n ? 'block' : 'none';
+    const ind = document.getElementById(`stepind${i}`);
+    ind.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+    if (i < n) ind.querySelector('.step-num').textContent = '✓';
+    else ind.querySelector('.step-num').textContent = i;
+  });
+}
+
+function toggleExtras() {
+  const body  = document.getElementById('extrasBody');
+  const arrow = document.getElementById('extrasArrow');
+  const open  = body.classList.toggle('open');
+  arrow.classList.toggle('open', open);
+}
+
+function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('photoIcon').style.display = 'none';
+    const img = document.getElementById('photoImg');
+    img.src = e.target.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function getExtras() {
+  const photoImg = document.getElementById('photoImg');
+  return {
+    photo:    photoImg.style.display !== 'none' ? photoImg.src : '',
+    linkedin: document.getElementById('linkedinUrl').value.trim(),
+    scholar:  document.getElementById('scholarUrl').value.trim(),
+    website:  document.getElementById('websiteUrl').value.trim(),
+  };
+}
+
+function selectStyle(el, style) {
+  document.querySelectorAll('.style-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedStyle = style;
+}
+
+function showToast(msg, success=true) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').textContent = success ? '✅' : '⚠️';
+  t.className = 'toast show' + (success ? ' success' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ====== BACKEND CALL (avoids CORS) ======
+async function callBackend(resumeText, style) {
+  const backendUrl = document.getElementById('backendUrl').value.trim().replace(/\/$/, '');
+  const extras = getExtras();
+
+  const body = {
+    resume_text:  resumeText,
+    style,
+    linkedin_url: extras.linkedin,
+    scholar_url:  extras.scholar,
+    website_url:  extras.website,
+    custom_prompt: extras.photo ? 'user_has_photo' : '',
+  };
+
+  const headers = { 'Content-Type': 'application/json' };
+
+  const resp = await fetch(`${backendUrl}/generate`, { method: 'POST', headers, body: JSON.stringify(body) });
+  if (!resp.ok) {
+    let msg = `Server error ${resp.status}`;
+    try { const e = await resp.json(); msg = e.detail || msg; } catch {}
+    throw new Error(msg);
+  }
+  const data = await resp.json();
+  let html = data.html;
+
+  // Inject profile photo: target id="profile-photo" first, then any avatar/placeholder img
+  if (extras.photo) {
+    if (html.includes('id="profile-photo"')) {
+      html = html.replace(/(<img[^>]*id="profile-photo"[^>]*)src="[^"]*"/i, `$1src="${extras.photo}"`);
+    } else {
+      // Fallback: replace first external avatar/placeholder image src
+      html = html.replace(
+        /(<img[^>]*src=")https?:\/\/[^"]*(?:avatar|photo|profile|placeholder|via\.placeholder|picsum|robohash|ui-avatars)[^"]*/i,
+        `$1${extras.photo}`
+      );
+    }
+  }
+
+  return html;
+}
+
+// ====== GENERATE FLOW ======
+async function startGenerate() {
+  const text = document.getElementById('resumeText').value.trim();
+
+  if (!text) {
+    showToast('请先上传简历文件', false);
+    return;
+  }
+
+  document.getElementById('generateBtn').disabled = true;
+  setStep(2);
+
+  const logEl = document.getElementById('genLog');
+  logEl.innerHTML = '';
+
+  const addLog = (msg, cls) => {
+    const line = document.createElement('div');
+    line.className = `log-line ${cls}`;
+    line.textContent = msg;
+    line.style.animationDelay = '0s';
+    logEl.appendChild(line);
+  };
+
+  const styleName = selectedStyle === 'minimal' ? '极简' : selectedStyle === 'creative' ? '创意' : '科技';
+
+  addLog('📄 读取简历内容...', 'working');
+  await delay(400);
+  addLog(`✓ 内容长度 ${text.length} 字符`, 'ok');
+  await delay(300);
+  addLog('🤖 调用 GPT-4o 生成网站...', 'working');
+
+  try {
+    generatedHTML = await callBackend(text, selectedStyle);
+    addLog('✓ AI 生成完成', 'ok');
+    await delay(300);
+    addLog(`🎨 套用「${styleName}」风格`, 'ok');
+    await delay(300);
+    addLog('✅ 网站生成完毕！', 'ok');
+    await delay(500);
+    showPreview();
+  } catch (e) {
+    addLog(`❌ 出错：${e.message}`, 'error');
+    document.getElementById('generateBtn').disabled = false;
+  }
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function showPreview() {
+  setStep(3);
+
+  // Auto-suggest slug from filename or name in HTML comment
+  const nameMatch = generatedHTML.match(/<!-- NAME: (.+?) -->/);
+  if (nameMatch) {
+    const suggested = nameMatch[1].trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const slugEl = document.getElementById('slugInput');
+    if (!slugEl.value) slugEl.value = suggested;
+    document.getElementById('previewUrl').textContent = `resumeai.app/u/${suggested}`;
+  } else {
+    const randId = Math.random().toString(36).slice(2, 8);
+    document.getElementById('previewUrl').textContent = `resumeai.app/u/${randId}`;
+  }
+
+  document.getElementById('previewFrame').srcdoc = generatedHTML;
+  document.getElementById('publishedBanner').style.display = 'none';
+  document.getElementById('publishBtn').style.display = '';
+  document.getElementById('generateBtn').disabled = false;
+  isPublished = false;
+}
+
+function goBack() { setStep(1); }
+
+function copyLink() {
+  const link = document.getElementById('publishedLink').href;
+  navigator.clipboard.writeText(link).then(() => showToast('链接已复制到剪贴板'));
+}
+
+function openPreview() {
+  if (!generatedHTML) return;
+  const blob = new Blob([generatedHTML], { type: 'text/html; charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  // revoke after a short delay to allow the tab to load
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+function downloadHTML() {
+  if (!generatedHTML) return;
+  const blob = new Blob([generatedHTML], { type: 'text/html; charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'my-portfolio.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('HTML 文件已下载 ✓');
+}
+
+async function regenerate() {
+  const text = document.getElementById('resumeText').value.trim();
+
+  // cycle to next style
+  const styles = ['minimal', 'creative', 'tech'];
+  selectedStyle = styles[(styles.indexOf(selectedStyle) + 1) % styles.length];
+  document.querySelectorAll('.style-option').forEach((el, i) => {
+    el.classList.toggle('selected', styles[i] === selectedStyle);
+  });
+
+  setStep(2);
+  const logEl = document.getElementById('genLog');
+  logEl.innerHTML = '';
+
+  const addLog = (msg, cls) => {
+    const line = document.createElement('div');
+    line.className = `log-line ${cls}`;
+    line.textContent = msg;
+    line.style.animationDelay = '0s';
+    logEl.appendChild(line);
+  };
+
+  const styleName = selectedStyle === 'minimal' ? '极简' : selectedStyle === 'creative' ? '创意' : '科技';
+  addLog(`🔄 切换到「${styleName}」风格...`, 'working');
+  addLog('🤖 重新调用 GPT-4o...', 'working');
+
+  try {
+    generatedHTML = await callBackend(text, selectedStyle);
+    addLog('✅ 完成！', 'ok');
+    await delay(400);
+    showPreview();
+  } catch(e) {
+    addLog(`❌ 出错：${e.message}`, 'error');
+  }
+}
+
+async function publish() {
+  const btn = document.getElementById('publishBtn');
+  const backendUrl = document.getElementById('backendUrl').value.trim().replace(/\/$/, '');
+
+  // Use custom slug or fall back to random
+  let slug = document.getElementById('slugInput').value.trim().replace(/^-+|-+$/g, '');
+  if (!slug) slug = Math.random().toString(36).slice(2, 10);
+
+  btn.textContent = '发布中...';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch(`${backendUrl}/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, html: generatedHTML })
+    });
+    if (!r.ok) {
+      const e = await r.json();
+      throw new Error(e.detail || `Server error ${r.status}`);
+    }
+    const data = await r.json();
+
+    // data.url is the Supabase public URL — renders inline as HTML in the browser
+    document.getElementById('publishedLink').textContent = data.url;
+    document.getElementById('publishedLink').href = data.url;
+    document.getElementById('publishedBanner').style.display = 'flex';
+    btn.style.display = 'none';
+    showToast('🎉 网站已成功发布上线！');
+    isPublished = true;
+  } catch (e) {
+    showToast(`发布失败：${e.message}`, false);
+    btn.textContent = '🚀 发布上线';
+    btn.disabled = false;
+  }
+}
+
+// ====== PREFILL RESUME FOR TESTING ======
+const PREFILL_RESUME = "CHENYING WANG, Ph.D.\n📍 4850 Connecticut Ave, Washington DC, 20008 | 📞 (408) 835-0051 | 📧 wangchenying7@gmail.com\n🔗 LinkedIn: https://www.linkedin.com/in/chenying-wang-799616220/\nPROFESSIONAL SUMMARY\nElectrochemical Engineer with PhD training in chemical engineering and 7+ years of experience (PhD + postdoctoral) in aqueous CO₂ electroreduction and thin film electrode development. Expertise in designing and optimizing electrochemical electrodes to enhance current density, product selectivity, and operational stability. Strong hands-on background in electrochemical testing (CV, EIS, MS, long-term electrolysis) and product analysis (GC-MS, NMR, HPLC, TEM/EELS, SEM/EDS, Raman, XRD, XPS, XRF, UV). Seeking R&D roles in CO₂ utilization and electrochemical process development.\nTECHNICAL SKILLS\nElectrochemical Systems: CV, LSV, EIS, Mott-Schottky, long-term electrolysis\nCO₂ Conversion: aqueous CO₂RR, electrode fabrication, selectivity and stability optimization\nReactor & Analysis: H-cell operation, GC-MS, NMR, HPLC, TEM/EELS, STXM, SEM/EDS, XPS, XRF, XRD, FTIR, Raman, UV-vis, PL\nMaterials: metal oxides, thin-film electrodes, sol-gel synthesis\nData: Matlab, Origin, experimental design and parameter optimization\nEDUCATION\nPh.D., Chemical Engineering | Rensselaer Polytechnic Institute | 2020-2023 (GPA: 3.6)\nM.S., Chemical Engineering | Rensselaer Polytechnic Institute | 2019-2020 (GPA: 3.8)\nB.E., Chemical Engineering | Tianjin University | 2015-2019 (GPA: 3.3)\nPROFESSIONAL EXPERIENCE\nPostdoctoral R&D Scientist | Carnegie Institution of Washington | Washington, D.C. | Jan 2024 – Present\nNASA project\nDeveloped aqueous CO₂ electroreduction thin film electrodes (Ti, Si, Ni, Cr, S, Fe) achieving high current density and high selectivity toward organic matters under ambient conditions.\nOptimized electrode composition and electrolyte formulation to improve operational stability and suppress competing hydrogen evolution reactions.\nBuilt and operated lab-scale electrochemical reactors (H-cell) and conducted long-term electrolysis and durability tests.\nPerformed electrochemical characterization (CV, EIS, Mott-Schottky) and quantitative product analysis using GC-MS, NMR, TEM, EDX, EELS, STXM, SEM, EDS.\nR&D Engineer (Doctoral Research) | Rensselaer Polytechnic Institute | Troy, NY | Aug 2019 – Dec 2023\nDeveloped electrochemical and catalytic systems for CO₂/CH4 conversion and reactive oxygen species generation in aqueous environments.\nEstablished bicarbonate-mediated electrochemical pathways enabling oxidant and fuel precursor production under mild operating conditions.\nOptimized catalyst composition and reaction parameters to enhance selectivity, activity, and reproducibility.\nPUBLICATIONS\nTotal: 12 papers | First/Co-first Author: 8\nNASA Astrobiology ICAR Program Grant, Postdoctoral Fellow, 2024 – Present\nPatent in Preparation: Self-Driven Electrochemical CO₂ Reduction System Based on Mineral Semiconductor Coupling.";
+// resumeText is populated by /upload-resume on file select
+
+// File upload → call /upload-resume to extract text
+document.getElementById('fileInput').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  document.getElementById('fileBadge').style.display = 'block';
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('parseStatus').textContent = '⏳ 解析中...';
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('resumeText').value = '';
+
+  try {
+    const backendUrl = document.getElementById('backendUrl').value.trim().replace(/\/$/, '');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const r = await fetch(`${backendUrl}/upload-resume`, { method: 'POST', body: formData });
+    if (!r.ok) {
+      const e = await r.json();
+      throw new Error(e.detail || `Server error ${r.status}`);
+    }
+    const data = await r.json();
+    document.getElementById('resumeText').value = data.text;
+    document.getElementById('parseStatus').textContent = `✓ 已提取 ${data.text.length} 字符`;
+    document.getElementById('generateBtn').disabled = false;
+    showToast(`简历解析完成，共 ${data.text.length} 字符`);
+  } catch (err) {
+    document.getElementById('parseStatus').textContent = `❌ ${err.message}`;
+    showToast(`解析失败：${err.message}`, false);
+    document.getElementById('generateBtn').disabled = false;
+  }
+});
+
+// Drag and drop — reuse the file input change handler
+const uploadArea = document.getElementById('uploadArea');
+const fileInput  = document.getElementById('fileInput');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault(); uploadArea.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    fileInput.dispatchEvent(new Event('change'));
+  }
+});
+</script>
+</body>
+</html>

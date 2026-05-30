@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    { "source": "/u/:slug", "destination": "/api/u/[slug]" }
+  ],
+  "headers": [
+    {
+      "source": "/u/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ]
+}
