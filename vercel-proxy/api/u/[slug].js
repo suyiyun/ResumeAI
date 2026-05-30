@@ -1,56 +1,45 @@
 /**
- * Vercel Edge Function — /u/[slug]
- *
- * Fetches the generated HTML from Supabase Storage and serves it
- * as a proper webpage. Supports custom domain (resumeai.app/u/chenying-wang).
+ * Vercel Serverless Function — /api/u/[slug]
+ * Fetches generated HTML from Supabase Storage and serves it inline.
  */
 
-export const config = { runtime: "edge" };
+const SUPABASE_URL   = process.env.SUPABASE_URL;
+const STORAGE_BUCKET = "sites";
 
-const SUPABASE_URL    = process.env.SUPABASE_URL;
-const STORAGE_BUCKET  = "sites";
-
-export default async function handler(req) {
-  const url  = new URL(req.url);
-  const slug = url.pathname.split("/u/")[1]?.replace(/\.html$/, "").trim();
+module.exports = async function handler(req, res) {
+  const { slug } = req.query;
 
   if (!slug) {
-    return new Response("Not found", { status: 404 });
+    return res.status(404).send("Not found");
   }
 
   if (!SUPABASE_URL) {
-    return new Response("SUPABASE_URL not configured", { status: 500 });
+    return res.status(500).send("SUPABASE_URL not configured");
   }
 
   const storageUrl = `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${slug}.html`;
 
   try {
-    const res = await fetch(storageUrl);
+    const upstream = await fetch(storageUrl);
 
-    if (!res.ok) {
-      if (res.status === 404) {
-        return new Response(notFoundPage(slug), {
-          status: 404,
-          headers: { "content-type": "text/html; charset=utf-8" },
-        });
+    if (!upstream.ok) {
+      if (upstream.status === 404) {
+        return res.status(404).setHeader("Content-Type", "text/html; charset=utf-8").send(notFoundPage(slug));
       }
-      return new Response(`Upstream error: ${res.status}`, { status: res.status });
+      return res.status(upstream.status).send(`Upstream error: ${upstream.status}`);
     }
 
-    const html = await res.text();
+    const html = await upstream.text();
 
-    return new Response(html, {
-      status: 200,
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-        "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400",
-        "x-powered-by": "ResumeAI",
-      },
-    });
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
+    res.setHeader("X-Powered-By", "ResumeAI");
+    return res.status(200).send(html);
+
   } catch (err) {
-    return new Response(`Error: ${err.message}`, { status: 500 });
+    return res.status(500).send(`Error: ${err.message}`);
   }
-}
+};
 
 function notFoundPage(slug) {
   return `<!DOCTYPE html>
