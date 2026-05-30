@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from openai import AsyncOpenAI
 import os, re, hashlib, time
 from dotenv import load_dotenv
-from chatbox_snippet import inject_chatbox
 
 load_dotenv()
 
@@ -158,7 +157,7 @@ async def generate_site(req: GenerateRequest):
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": user_prompt},
             ],
-            max_tokens=4000,
+            max_tokens=8000,
             temperature=0.7,
         )
         html = response.choices[0].message.content.strip()
@@ -171,10 +170,6 @@ async def generate_site(req: GenerateRequest):
         name = name_match.group(1).strip() if name_match else "portfolio"
         slug = hashlib.md5(f"{name}{time.time()}".encode()).hexdigest()[:8]
 
-        # Inject AI chatbox — backend_url for the /chat endpoint
-        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
-        html = inject_chatbox(html, backend_url)
-
         return GenerateResponse(html=html, name=name, slug=slug)
 
     except HTTPException:
@@ -184,9 +179,10 @@ async def generate_site(req: GenerateRequest):
 
 
 class ChatRequest(BaseModel):
-    html: str           # current full page HTML
-    message: str        # user's customization request
-    history: list = []  # [{role, content}, ...] for multi-turn context
+    html: str              # current full page HTML
+    message: str           # user's customization request
+    history: list = []     # [{role, content}, ...] for multi-turn context
+    image_base64: str = "" # optional: data URI like "data:image/png;base64,..."
 
 
 class ChatResponse(BaseModel):
@@ -209,26 +205,38 @@ async def chat_customize(req: ChatRequest):
         "用户会告诉你想改什么，你需要：\n"
         "1. 返回修改后的完整 HTML（保留所有原有内容，只修改用户要求的部分）\n"
         "2. 在 HTML 末尾的注释中写一句确认：<!-- REPLY: 已完成xxx修改 -->\n"
-        "3. 不要删除页面中已有的 id=\"resumeai-chat\" chatbox 代码\n"
-        "4. 只返回 HTML，不要任何解释或 markdown 代码块"
+        "3. 严禁返回 markdown 代码块（不要 ```html 或 ``` 包裹），直接输出原始 HTML\n"
+        "4. 只返回 HTML，不要任何解释文字"
     )
 
     messages = [{"role": "system", "content": system_prompt}]
     # Include recent history for multi-turn context (last 6 messages)
     for h in req.history[-6:]:
         messages.append(h)
-    messages.append({
-        "role": "user",
-        "content": f"当前页面 HTML：\n{req.html}\n\n用户请求：{req.message}"
-    })
+
+    # Build user content
+    # If an image is attached, instruct the AI to place a placeholder <img> tag.
+    # The frontend will swap __USER_IMAGE__ for the real base64 data URL after generation,
+    # so we never send pixel data to the model (avoids content-policy refusals on photos).
+    if req.image_base64:
+        image_instruction = (
+            "\n\n【图片说明】用户上传了一张图片。"
+            "请根据用户的请求，在 HTML 中合适位置嵌入该图片，"
+            "使用 <img src=\"__USER_IMAGE__\" ...> 占位（不要修改 src 值，保持 __USER_IMAGE__ 不变）。"
+        )
+        user_text = f"当前页面 HTML：\n{req.html}\n\n用户请求：{req.message}{image_instruction}"
+    else:
+        user_text = f"当前页面 HTML：\n{req.html}\n\n用户请求：{req.message}"
+
+    messages.append({"role": "user", "content": user_text})
 
     try:
         ai = AsyncOpenAI(api_key=api_key)
         response = await ai.chat.completions.create(
             model="gpt-4o",
             messages=messages,
-            max_tokens=4000,
-            temperature=0.5,
+            max_tokens=8000,
+            temperature=0.3,
         )
         new_html = response.choices[0].message.content.strip()
         new_html = re.sub(r'^```html\s*', '', new_html, flags=re.IGNORECASE)
